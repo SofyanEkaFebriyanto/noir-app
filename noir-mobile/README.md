@@ -37,14 +37,16 @@ manifest hasil generate.
 
 `assets/avatar/` berisi video loop per status:
 
-| File | Status |
-|---|---|
-| `idle.mp4` | Diam / standby |
-| `listening.mp4` | Mendengarkan |
-| `thinking.mp4` | Berpikir |
-| `speaking.mp4` | Berbicara |
+| File | Status | Sumber |
+|---|---|---|
+| `idle.mp4` | Diam / standby | video idle bawaan Noir |
+| `listening.mp4` | Mendengarkan | generate khusus |
+| `thinking.mp4` | Berpikir | video working bawaan Noir |
+| `speaking.mp4` | Berbicara | generate khusus |
 
-Kalau sebuah file belum ada, otomatis fallback ke `idle.mp4`.
+> **Catatan:** file `.mp4` tidak di-commit ke repo (binary). Saat build APK,
+> taruh keempat file di `assets/avatar/`. Kalau sebuah file belum ada,
+> otomatis fallback ke `idle.mp4`.
 
 ## Arsitektur layar
 

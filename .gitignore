@@ -2,6 +2,9 @@
 .env
 *.env
 
+# Aset video avatar (binary, tidak di-commit — lihat README bagian Aset avatar)
+*.mp4
+
 # Go
 noir-brain/data/
 noir-brain/noir-brain
