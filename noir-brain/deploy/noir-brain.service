@@ -1,0 +1,16 @@
+[Unit]
+Description=Noir Brain - backend AI voice companion
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=noir
+WorkingDirectory=/opt/noir-brain
+EnvironmentFile=/opt/noir-brain/.env
+ExecStart=/opt/noir-brain/noir-brain
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

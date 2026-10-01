@@ -1,0 +1,27 @@
+name: noir_mobile
+description: Aplikasi interaktif Noir — AI voice companion ala JARVIS, full voice-to-voice.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web_socket_channel: ^3.0.0
+  flutter_tts: ^4.0.0
+  speech_to_text: ^7.0.0
+  porcupine_flutter: ^3.0.0
+  shared_preferences: ^2.2.0
+  video_player: ^2.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/avatar/

@@ -1,0 +1,20 @@
+# Secrets
+.env
+*.env
+
+# Go
+noir-brain/data/
+noir-brain/noir-brain
+
+# Flutter
+noir-mobile/.dart_tool/
+noir-mobile/.flutter-plugins
+noir-mobile/.flutter-plugins-dependencies
+noir-mobile/build/
+noir-mobile/android/app/google-services.json
+
+# Editor
+.idea/
+.vscode/
+*.iml
+.DS_Store
