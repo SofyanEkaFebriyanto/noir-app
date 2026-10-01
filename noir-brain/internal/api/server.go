@@ -13,6 +13,9 @@
 //     {"type":"done"}
 //     {"type":"history","messages":[{"role":"...","content":"..."}]}
 //     {"type":"error","error":"..."}
+//   HTTP API:
+//     POST /v1/chat/completions  <- kompatibel OpenAI (lihat openai.go)
+//     GET  /v1/models
 package api
 
 import (
@@ -68,6 +71,7 @@ func (s *Server) Run(addr string) error {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "noir-brain"})
 	})
 	r.GET("/ws", s.handleWS)
+	s.registerOpenAI(r)
 	return r.Run(addr)
 }
 

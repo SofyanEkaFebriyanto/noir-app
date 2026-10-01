@@ -45,10 +45,12 @@ class SpeechPipeline {
         // Endpointing: anggap selesai kalau user diam selama [endpointing].
         _endpointTimer = Timer(endpointing, () => _finish(onDone));
       },
-      listenMode: ListenMode.dictation,
-      partialResults: true,
-      localeId: localeId,
-      cancelOnError: true,
+      listenOptions: SpeechListenOptions(
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+        localeId: localeId,
+        cancelOnError: true,
+      ),
     );
   }
 

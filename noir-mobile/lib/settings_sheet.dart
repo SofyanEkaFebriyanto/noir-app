@@ -53,14 +53,17 @@ class _SettingsSheetState extends State<SettingsSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 24, right: 24, top: 12,
+          left: 24,
+          right: 24,
+          top: 12,
           bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(2),
@@ -99,7 +102,9 @@ class _SettingsSheetState extends State<SettingsSheet> {
                   Expanded(
                     child: Slider(
                       value: _rate,
-                      min: 0.5, max: 1.5, divisions: 20,
+                      min: 0.5,
+                      max: 1.5,
+                      divisions: 20,
                       onChanged: (v) => setState(() => _rate = v),
                     ),
                   ),

@@ -56,7 +56,9 @@ class _AvatarRendererState extends State<AvatarRenderer> {
 
   void _applyState() {
     for (final entry in _ctrls.entries) {
-      if (entry.key == widget.state || (entry.key == AvatarState.idle && !_ctrls.containsKey(widget.state))) {
+      if (entry.key == widget.state ||
+          (entry.key == AvatarState.idle &&
+              !_ctrls.containsKey(widget.state))) {
         entry.value.play();
       } else {
         entry.value.pause();
@@ -77,7 +79,8 @@ class _AvatarRendererState extends State<AvatarRenderer> {
     if (!_ready || _ctrls.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    final shown = _ctrls.containsKey(widget.state) ? widget.state : AvatarState.idle;
+    final shown =
+        _ctrls.containsKey(widget.state) ? widget.state : AvatarState.idle;
     return Stack(
       fit: StackFit.expand,
       children: [

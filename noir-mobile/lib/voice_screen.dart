@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,6 +66,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
       _conn?.sendTtsDone();
       _toIdle();
     };
+    if (kDebugMode) {
+      // Bantuan debug: tampilkan error TTS sebagai snackbar (rilis tetap nol teks).
+      _tts.onError = (msg) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('TTS error: $msg')),
+        );
+      };
+    }
     await _stt.init();
     await _connectBrain();
   }
@@ -259,7 +269,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     boxShadow: [
                       BoxShadow(
                         color: (_online ? Colors.greenAccent : Colors.redAccent)
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                         blurRadius: 8,
                       ),
                     ],
