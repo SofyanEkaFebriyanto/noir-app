@@ -14,6 +14,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   final _wsCtrl = TextEditingController();
   final _keyCtrl = TextEditingController();
   double _rate = 0.95;
+  bool _bargeInVoice = false;
   bool _loaded = false;
 
   @override
@@ -27,6 +28,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     _wsCtrl.text = p.getString('ws_url') ?? '';
     _keyCtrl.text = p.getString('porcupine_key') ?? '';
     _rate = p.getDouble('tts_rate') ?? 0.95;
+    _bargeInVoice = p.getBool('barge_in_voice') ?? false;
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -35,6 +37,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     await p.setString('ws_url', _wsCtrl.text.trim());
     await p.setString('porcupine_key', _keyCtrl.text.trim());
     await p.setDouble('tts_rate', _rate);
+    await p.setBool('barge_in_voice', _bargeInVoice);
     if (mounted) Navigator.pop(context, true); // true = config berubah
   }
 
@@ -99,6 +102,23 @@ class _SettingsSheetState extends State<SettingsSheet> {
                       min: 0.5, max: 1.5, divisions: 20,
                       onChanged: (v) => setState(() => _rate = v),
                     ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.record_voice_over_outlined,
+                      color: Colors.white70),
+                  const Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('Barge-in suara (eksperimental)',
+                          style: TextStyle(color: Colors.white70)),
+                    ),
+                  ),
+                  Switch(
+                    value: _bargeInVoice,
+                    onChanged: (v) => setState(() => _bargeInVoice = v),
                   ),
                 ],
               ),

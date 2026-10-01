@@ -28,8 +28,9 @@ Satu otak (`noir-brain`), banyak badan: aplikasi mobile sekarang, robot fisik na
 ## Status
 
 - [x] Perencanaan — blueprint/PRD/design disetujui (2026-10-01)
-- [ ] **Fase 1 — MVP voice-only**: wake word + STT + TTS half-duplex
-- [ ] Fase 2 — Full duplex (barge-in, continuous conversation)
+- [x] **Fase 1 — MVP voice-only**: wake word + STT + TTS half-duplex
+- [x] **Fase 1.5 — MVP runnable**: settings UI, AndroidManifest, aset avatar, systemd unit
+- [ ] Fase 2 — Full duplex (tap-to-interrupt, continuous conversation, barge-in suara eksperimental)
 - [ ] Fase 3 — Memori jangka panjang & kepribadian adaptif
 - [ ] Fase 4 — Robot fisik ESP32 (butuh modal)
 

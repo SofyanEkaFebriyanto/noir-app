@@ -5,6 +5,7 @@
 //     {"type":"hello","client":"noir-mobile/1.0"}
 //     {"type":"chat","text":"<transkrip STT>"}     <- teks dari STT, bukan ketikan
 //     {"type":"tts_done"}                          <- app selesai membacakan
+//     {"type":"interrupt"}                         <- user memotong (barge-in)
 //     {"type":"history","limit":50}
 //   Server → client:
 //     {"type":"avatar_state","state":"idle|listening|thinking|speaking","text":"..."}
@@ -83,6 +84,16 @@ func (c *clientConn) send(ev Event) {
 	_ = c.ws.WriteJSON(ev)
 }
 
+// cancelStream membatalkan stream LLM yang sedang jalan di koneksi ini.
+func (s *Server) cancelStream(conn *clientConn) {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	if conn.cancel != nil {
+		conn.cancel()
+		conn.cancel = nil
+	}
+}
+
 func (s *Server) handleWS(c *gin.Context) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -106,16 +117,16 @@ func (s *Server) handleWS(c *gin.Context) {
 			s.handleChat(conn, strings.TrimSpace(ev.Text))
 		case "tts_done":
 			conn.send(Event{Type: "avatar_state", State: "idle"})
+		case "interrupt":
+			// Barge-in: user memotong → batalkan stream, kembali idle.
+			s.cancelStream(conn)
+			conn.send(Event{Type: "avatar_state", State: "idle"})
 		case "history":
 			s.handleHistory(conn, ev.Limit)
 		}
 	}
 
-	conn.mu.Lock()
-	if conn.cancel != nil {
-		conn.cancel()
-	}
-	conn.mu.Unlock()
+	s.cancelStream(conn)
 	log.Printf("ws: client %s pergi", ws.RemoteAddr())
 }
 
@@ -126,11 +137,9 @@ func (s *Server) handleChat(conn *clientConn, text string) {
 	}
 
 	// Batalkan stream sebelumnya kalau user ngomong lagi (half-duplex guard).
-	conn.mu.Lock()
-	if conn.cancel != nil {
-		conn.cancel()
-	}
+	s.cancelStream(conn)
 	ctx, cancel := context.WithCancel(context.Background())
+	conn.mu.Lock()
 	conn.cancel = cancel
 	conn.mu.Unlock()
 

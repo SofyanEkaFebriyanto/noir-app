@@ -57,10 +57,18 @@ v1 single-user. Multi-user / login / akun = out of scope.
 
 ## 5. Fase berikutnya (bukan MVP)
 
-**v1.1 — Full duplex (JARVIS beneran)**
-- F-09: Barge-in — pengguna bisa memotong omongan Noir (butuh echo cancellation).
-- F-10: Continuous conversation — setelah bangun via wake word, tetap mendengarkan 30 dtk tanpa wake word ulang.
-- F-11: Perintah cepat lokal tanpa LLM: "diam", "ulangi", "stop".
+**v1.1 — Full duplex (JARVIS beneran)** ✅ diimplementasi 2026-10-01
+- F-09: Barge-in — **tap avatar** saat Noir bicara = interupsi utama (andal, tanpa AEC).
+  Barge-in **suara** tersedia sebagai eksperimen (default mati, toggle di pengaturan):
+  STT tetap jalan saat speaking, heuristik membedakan suara Noir sendiri
+  (parsial cocok dengan teks dibacakan → abaikan) vs suara pengguna
+  (2 parsial beruntun tidak cocok → interupsi). Jujur: tanpa echo cancellation
+  hardware, barge-in suara tidak 100% andal.
+- F-10: Continuous conversation — 30 dtk setelah Noir selesai bicara, langsung
+  dengarkan lagi tanpa wake word ulang.
+- F-11: Perintah cepat lokal tanpa LLM: "diam"/"stop"/"berhenti" hentikan total,
+  "ulangi" baca ulang jawaban terakhir.
+- F-08 diperketat: diam 12 dtk saat listening → kembali idle.
 
 **v2.0 — Memori & kepribadian**
 - F-12: Memori jangka panjang — Noir ingat fakta & preferensi antar sesi.

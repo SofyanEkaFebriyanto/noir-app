@@ -117,6 +117,20 @@ Mic ──► [Porcupine: "Hey Noir"] ──► listening ──► [STT streami
 - **Target latency:** kalimat pertama dibunyikan < 2 dtk setelah endpointing (di LAN). Triknya: TTS per kalimat, bukan nunggu respons lengkap.
 - **Fallback:** LLM timeout → server kirim teks pendek, app bacakan "maaf, coba ulangi?" via TTS.
 
+### 3.4 Full duplex v1.1 (2026-10-01)
+
+- **Tap-to-interrupt** (jalur utama): tap avatar saat `speaking` → app hentikan TTS,
+  kirim `{type:interrupt}` (server batalkan stream via `cancelStream`), langsung `listening`.
+- **Voice barge-in** (eksperimental, default mati): `BargeInMonitor` — STT tetap aktif
+  saat speaking dalam mode monitor (`autoFinish=false`); parsial yang cocok dengan
+  teks yang dibacakan = suara sendiri (abaikan); 2 parsial beruntun yang tidak
+  cocok = interupsi pengguna → `_beginListening`.
+- **Continuous conversation**: `_conversationUntil` = 30 dtk setelah tiap ucapan
+  pengguna; `_toIdle` dalam window → langsung `listening` tanpa wake word.
+- **Perintah lokal** (tanpa LLM, regex di `_onUserSpeech`):
+  `diam|stop|berhenti|udah` → henti total + akhiri sesi; `ulangi` → bacakan ulang `_lastResponse`.
+- **Listen timeout**: 12 dtk tanpa suara saat `listening` → kembali `idle` (F-08).
+
 ### 3.2 REST
 
 | Method & path | Fungsi |

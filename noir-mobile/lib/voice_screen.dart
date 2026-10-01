@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'services/barge_in.dart';
 import 'services/noir_connection.dart';
 import 'services/speech_pipeline.dart';
 import 'services/tts_service.dart';
@@ -13,9 +14,14 @@ import 'widgets/waveform_ring.dart';
 
 /// Satu-satunya layar aplikasi: avatar + status. Nol teks.
 ///
-/// State machine: idle → listening → thinking → speaking → idle.
-/// Dipicu oleh wake word "Hey Noir" atau tap avatar (fallback).
-/// Long-press avatar → pengaturan.
+/// v1.1 full duplex:
+/// - Tap avatar saat Noir bicara = interupsi (berhenti + langsung dengarkan).
+/// - Barge-in suara (eksperimental, default mati di pengaturan).
+/// - Continuous conversation: 30 dtk setelah Noir selesai, ngomong aja
+///   tanpa "Hey Noir".
+/// - Perintah lokal tanpa LLM: "diam"/"stop" berhenti total,
+///   "ulangi" baca ulang jawaban terakhir.
+/// - Diam 12 dtk saat listening → kembali idle.
 class VoiceScreen extends StatefulWidget {
   const VoiceScreen({super.key});
 
@@ -24,6 +30,11 @@ class VoiceScreen extends StatefulWidget {
 }
 
 class _VoiceScreenState extends State<VoiceScreen> {
+  static const _conversationWindow = Duration(seconds: 30);
+  static const _listenTimeout = Duration(seconds: 12);
+  static final _stopCmd = RegExp(r'^(diam|stop|berhenti|udah|udahan|sudah)$');
+  static final _repeatCmd = RegExp(r'^ulangi(\s+(dong|ya|lagi))?$');
+
   AvatarState _state = AvatarState.idle;
   bool _online = false;
 
@@ -31,13 +42,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
   final _stt = SpeechPipeline();
   final _tts = TtsService();
   final _wake = WakeWordService();
+  late final BargeInMonitor _barge;
   StreamSubscription? _subState;
   StreamSubscription? _subResp;
   StreamSubscription? _subOnline;
+  Timer? _listenTimer;
+  DateTime _conversationUntil = DateTime.fromMillisecondsSinceEpoch(0);
+  String? _lastResponse;
 
   @override
   void initState() {
     super.initState();
+    _barge = BargeInMonitor(_stt);
     _boot();
   }
 
@@ -92,27 +108,86 @@ class _VoiceScreenState extends State<VoiceScreen> {
   }
 
   void _toIdle() {
+    _listenTimer?.cancel();
+    _barge.stop();
+    // Continuous conversation: masih dalam window → langsung dengarkan lagi,
+    // tanpa perlu "Hey Noir".
+    if (DateTime.now().isBefore(_conversationUntil)) {
+      _beginListening();
+      return;
+    }
     if (mounted) setState(() => _state = AvatarState.idle);
-    _startWakeWord(); // sesi selesai → nyalakan lagi wake word
+    _startWakeWord();
   }
 
-  /// Mulai mendengarkan: dari wake word atau tap avatar.
+  /// Mulai mendengarkan: dari wake word, tap avatar, interupsi, atau
+  /// continuous conversation.
   Future<void> _beginListening() async {
-    if (_state == AvatarState.listening || _state == AvatarState.thinking) return;
+    if (_state == AvatarState.listening || _state == AvatarState.thinking) {
+      return;
+    }
     if (!_online || _conn == null) return;
-    await _wake.stop(); // hemat mic saat sesi aktif (v1: half-duplex)
+    await _wake.stop(); // hemat mic saat sesi aktif
+    await _barge.stop();
+    _conn!.sendInterrupt(); // batalkan stream server kalau masih jalan
     if (mounted) setState(() => _state = AvatarState.listening);
     await _tts.stop();
-    await _stt.listen(onDone: (transcript) {
-      if (mounted) setState(() => _state = AvatarState.thinking);
-      _conn?.sendTranscript(transcript);
+    _listenTimer?.cancel();
+    _listenTimer = Timer(_listenTimeout, () {
+      // Diam 12 dtk tanpa suara → kembali idle (tidak menggantung di listening).
+      if (_state == AvatarState.listening && !_stt.hasSpeech) {
+        _stt.stop();
+        _toIdle();
+      }
     });
+    await _stt.listen(onDone: (transcript) {
+      _listenTimer?.cancel();
+      _onUserSpeech(transcript);
+    });
+  }
+
+  /// Ucapan pengguna selesai ditranskrip: perintah lokal dulu, baru ke server.
+  void _onUserSpeech(String transcript) {
+    final t = transcript.toLowerCase().trim();
+
+    // Perintah lokal — tanpa LLM, tanpa network.
+    if (_stopCmd.hasMatch(t)) {
+      _conversationUntil =
+          DateTime.fromMillisecondsSinceEpoch(0); // akhiri sesi paksa
+      _conn?.sendInterrupt();
+      _tts.stop();
+      _toIdle();
+      return;
+    }
+    if (_repeatCmd.hasMatch(t) && _lastResponse != null) {
+      _speak(_lastResponse!);
+      return;
+    }
+
+    // Percakapan biasa → perpanjang jendela continuous conversation.
+    _conversationUntil = DateTime.now().add(_conversationWindow);
+    if (mounted) setState(() => _state = AvatarState.thinking);
+    _conn?.sendTranscript(transcript);
   }
 
   /// Server mengirim teks jawaban lengkap → bacakan per kalimat.
   Future<void> _onSpeakText(String text) async {
-    // _state sudah 'speaking' dari event avatar_state; tinggal bunyikan.
+    _lastResponse = text;
+    await _speak(text);
+  }
+
+  Future<void> _speak(String text) async {
+    if (mounted) setState(() => _state = AvatarState.speaking);
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('barge_in_voice') ?? false) {
+      await _barge.start(fullText: text, onBargeIn: _onVoiceBargeIn);
+    }
     await _tts.speakText(text);
+  }
+
+  /// Barge-in suara terdeteksi → perlakukan sebagai ucapan baru.
+  void _onVoiceBargeIn() {
+    _beginListening();
   }
 
   Future<void> _openSettings() async {
@@ -134,10 +209,12 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   void dispose() {
+    _listenTimer?.cancel();
     _subState?.cancel();
     _subResp?.cancel();
     _subOnline?.cancel();
     _wake.stop();
+    _barge.stop();
     _stt.stop();
     _tts.stop();
     _conn?.dispose();
@@ -153,7 +230,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Avatar full-screen. Tap = bicara, long-press = pengaturan.
+            // Avatar full-screen. Tap = bicara / interupsi, long-press = pengaturan.
             GestureDetector(
               onTap: _beginListening,
               onLongPress: _openSettings,

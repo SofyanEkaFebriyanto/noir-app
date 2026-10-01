@@ -17,16 +17,26 @@ class SpeechPipeline {
   bool get available => _stt.isAvailable;
   bool get listening => _stt.isListening;
 
+  /// true jika sesi ini sudah menangkap ucapan.
+  bool get hasSpeech => _buffer.trim().isNotEmpty;
+
+  /// [onPartial] dipanggil untuk tiap hasil parsial.
+  /// [autoFinish]=false → mode monitor: sesi tidak pernah selesai sendiri
+  /// (dipakai BargeInMonitor saat TTS bunyi).
   Future<void> listen({
     required void Function(String transcript) onDone,
+    void Function(String partial)? onPartial,
     Duration endpointing = const Duration(milliseconds: 800),
     String localeId = 'id_ID',
+    bool autoFinish = true,
   }) async {
     _buffer = '';
     _done = false;
     await _stt.listen(
       onResult: (result) {
         _buffer = result.recognizedWords;
+        onPartial?.call(_buffer);
+        if (!autoFinish) return; // mode monitor: biarkan jalan
         _endpointTimer?.cancel();
         if (result.finalResult) {
           _finish(onDone);

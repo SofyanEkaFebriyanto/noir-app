@@ -95,6 +95,11 @@ class NoirConnection {
     send({'type': 'tts_done'});
   }
 
+  /// Minta server membatalkan stream yang sedang jalan (interupsi / barge-in).
+  void sendInterrupt() {
+    send({'type': 'interrupt'});
+  }
+
   void send(Map<String, dynamic> obj) {
     try {
       _ch?.sink.add(jsonEncode(obj));

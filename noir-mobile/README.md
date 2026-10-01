@@ -19,6 +19,16 @@ flutter run
 | 🎧 | Access key Picovoice (gratis) | dari console.picovoice.ai |
 | 🎚️ | Slider kecepatan bicara TTS | 0.5 – 1.5 |
 
+## v1.1 — Full duplex
+
+- **Tap avatar saat Noir bicara** = interupsi (langsung dengarkan lagi).
+- **Continuous conversation**: 30 detik setelah Noir selesai, ngomong aja tanpa "Hey Noir".
+- **Perintah lokal** (tanpa LLM): "diam"/"stop" berhenti total, "ulangi" baca ulang.
+- **Barge-in suara (eksperimental)**: aktifkan via toggle di pengaturan
+  (long-press avatar). Tanpa echo cancellation keandalannya terbatas —
+  tap tetap jalur utama.
+- Timeout: diam 12 detik saat listening → kembali idle.
+
 ## Android
 
 `android/app/src/main/AndroidManifest.xml` di repo ini adalah **referensi permission**
