@@ -63,7 +63,9 @@ class NoirConnection {
           final state = avatarStateFrom(msg['state'] as String? ?? 'idle');
           _stateCtrl.add(state);
           final text = msg['text'] as String?;
-          if (state == AvatarState.speaking && text != null && text.isNotEmpty) {
+          if (state == AvatarState.speaking &&
+              text != null &&
+              text.isNotEmpty) {
             _responseCtrl.add(text);
           }
         case 'token':
