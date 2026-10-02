@@ -9,6 +9,7 @@
 //     {"type":"history","limit":50}
 //   Server → client:
 //     {"type":"avatar_state","state":"idle|listening|thinking|speaking","text":"..."}
+//     {"type":"agent_working"}                <- agent kerja >7 dtk, app boleh sela TTS
 //     {"type":"token","text":"..."}                <- token LLM streaming
 //     {"type":"done"}
 //     {"type":"history","messages":[{"role":"...","content":"..."}]}
@@ -26,6 +27,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -271,7 +273,18 @@ func (s *Server) systemPrompt() string {
 
 // handleAgentChat menjalankan agent loop (LLM + tools). Mengembalikan jawaban
 // final, atau "" bila dibatalkan. Progress tool dikirim sebagai status thinking.
+// Voice guard (F-15): kalau agent kerja >7 detik tanpa jawaban, kirim
+// agent_working agar app menyela "sebentar ya" via TTS (tidak hening).
 func (s *Server) handleAgentChat(ctx context.Context, conn *clientConn, messages []brain.Message) string {
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-time.After(7 * time.Second):
+			conn.send(Event{Type: "agent_working"})
+		case <-done:
+		}
+	}()
 	answer, err := s.deps.Agent.Run(ctx, messages, func(step int, toolName string) {
 		conn.send(Event{Type: "avatar_state", State: "thinking", Text: toolProgressText(toolName)})
 	})
@@ -301,6 +314,16 @@ func toolProgressText(name string) string {
 		return "cek sistem…"
 	case "waktu":
 		return "cek jam…"
+	case "edit_file":
+		return "edit file…"
+	case "grep":
+		return "cari pola…"
+	case "glob":
+		return "cari file…"
+	case "webfetch":
+		return "baca web…"
+	case "todo_write":
+		return "catat tugas…"
 	default:
 		return "kerja…"
 	}

@@ -17,7 +17,7 @@ type Config struct {
 	SystemPrompt string // override system prompt (opsional)
 
 	AgentEnabled  bool     // AGENT_ENABLED, default true — agent loop + tools
-	AgentMaxSteps int      // AGENT_MAX_STEPS, default 8
+	AgentMaxSteps int      // AGENT_MAX_STEPS, default 12
 	AgentServices []string // AGENT_SERVICES, koma-dipisah, default ["noir-brain"]
 
 	ProactiveEnabled  bool   // PROACTIVE_ENABLED, default true — sapaan proaktif (F-14, in-app only)
@@ -36,7 +36,7 @@ func Load() Config {
 		SystemPrompt: os.Getenv("SYSTEM_PROMPT"),
 
 		AgentEnabled:  envBool("AGENT_ENABLED", true),
-		AgentMaxSteps: envInt("AGENT_MAX_STEPS", 8),
+		AgentMaxSteps: envInt("AGENT_MAX_STEPS", 12),
 		AgentServices: envList("AGENT_SERVICES", []string{"noir-brain"}),
 
 		ProactiveEnabled:  envBool("PROACTIVE_ENABLED", true),

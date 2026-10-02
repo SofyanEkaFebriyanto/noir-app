@@ -114,9 +114,18 @@ func checkWritable(abs string) error {
 
 var serviceNameRe = regexp.MustCompile(`^[a-zA-Z0-9@._:-]+$`)
 
+// Nama hari & bulan Indonesia (time.Format tidak kenal "Senin").
+var hariID = []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"}
+var bulanID = []string{"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+
+func waktuID(t time.Time) string {
+	return fmt.Sprintf("%s, %d %s %d %s",
+		hariID[t.Weekday()], t.Day(), bulanID[int(t.Month())-1], t.Year(), t.Format("15:04:05"))
+}
+
 // ---------- tools ----------
 
-// DefaultTools mengembalikan toolset v1. serviceAllowlist = nama service yang
+// DefaultTools mengembalikan toolset v1+v2. serviceAllowlist = nama service yang
 // boleh di-status/restart (mis. ["noir-brain"]).
 func DefaultTools(serviceAllowlist []string) []ToolDef {
 	allowed := map[string]bool{}
@@ -124,13 +133,13 @@ func DefaultTools(serviceAllowlist []string) []ToolDef {
 		allowed[s] = true
 	}
 
-	return []ToolDef{
+	tools := []ToolDef{
 		{
 			Name:        "waktu",
 			Description: "Waktu sekarang di server STB (zona waktu lokal).",
 			Parameters:  objSchema(map[string]any{}),
 			Exec: func(ctx context.Context, argsJSON string) (string, error) {
-				return time.Now().Format("Senin, 2 Jan 2006 15:04:05 MST"), nil
+				return waktuID(time.Now()), nil
 			},
 		},
 		{
@@ -324,6 +333,7 @@ func DefaultTools(serviceAllowlist []string) []ToolDef {
 			},
 		},
 	}
+	return append(tools, v2Tools()...)
 }
 
 // a2s mengekstrak field "name" dari args JSON.

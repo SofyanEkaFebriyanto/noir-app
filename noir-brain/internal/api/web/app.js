@@ -69,6 +69,7 @@
       case 'token': /* streaming — diabaikan di web MVP */ break;
       case 'done': break;
       case 'proactive_ping': showPing(m.text); break;
+      case 'agent_working': speakFiller(); break;
       case 'error':
         setState('idle', 'error: ' + (m.error || 'unknown'));
         break;
@@ -99,6 +100,20 @@
     u.onend = speakNext;
     u.onerror = speakNext;
     speechSynthesis.speak(u);
+  }
+
+  /* ---------- F-15: voice guard — sela "sebentar ya" saat agent kerja lama ----------
+     Dipicu sekali per giliran bila agent >7 dtk tanpa jawaban. Tidak kirim
+     tts_done (bukan jawaban final); speakText jawaban asli akan cancel ini. */
+  function speakFiller() {
+    if (!('speechSynthesis' in window) || speaking) return;
+    try {
+      const u = new SpeechSynthesisUtterance('Sebentar ya, lagi gw kerjain.');
+      u.lang = 'id-ID';
+      const v = pickVoice(); if (v) u.voice = v;
+      u.rate = 1.0; u.volume = 1.0;
+      speechSynthesis.speak(u);
+    } catch (e) {}
   }
 
   /* ---------- F-14: sapaan proaktif (in-app only) ---------- */
