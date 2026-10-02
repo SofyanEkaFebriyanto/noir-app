@@ -23,6 +23,8 @@ type Config struct {
 	ProactiveEnabled  bool   // PROACTIVE_ENABLED, default true — sapaan proaktif (F-14, in-app only)
 	ProactiveInterval int    // PROACTIVE_INTERVAL_MIN, default 45 — jeda antar cek (menit)
 	ProactiveQuiet    string // PROACTIVE_QUIET_HOURS, default "23-6" — jam sepi WIB (format "23-6")
+
+	MemoryJobsEnabled bool // MEMORY_JOBS_ENABLED, default true — konsolidasi + daily note (F-16)
 }
 
 // Load membaca konfigurasi dari environment.
@@ -42,6 +44,8 @@ func Load() Config {
 		ProactiveEnabled:  envBool("PROACTIVE_ENABLED", true),
 		ProactiveInterval: envInt("PROACTIVE_INTERVAL_MIN", 45),
 		ProactiveQuiet:    env("PROACTIVE_QUIET_HOURS", "23-6"),
+
+		MemoryJobsEnabled: envBool("MEMORY_JOBS_ENABLED", true),
 	}
 }
 

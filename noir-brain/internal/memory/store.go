@@ -72,6 +72,15 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("memory: schema pings: %w", err)
 	}
+	// F-16: catatan harian otomatis (ala Hermes daily note).
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS daily_notes (
+		date TEXT PRIMARY KEY,
+		content TEXT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("memory: schema daily_notes: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -242,4 +251,142 @@ func (s *Store) LastPing() (Ping, error) {
 		return Ping{}, nil
 	}
 	return p, err
+}
+
+// ---------- F-16: konsolidasi + daily note ----------
+
+// FactFull adalah fakta beserta tanggal dibuatnya.
+type FactFull struct {
+	Fact      string
+	CreatedAt time.Time
+}
+
+// FactsFull mengambil semua fakta + tanggal, urutan kronologis.
+func (s *Store) FactsFull() ([]FactFull, error) {
+	rows, err := s.db.Query(`SELECT fact, created_at FROM facts ORDER BY id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []FactFull
+	for rows.Next() {
+		var f FactFull
+		if err := rows.Scan(&f.Fact, &f.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// FactCount menghitung jumlah fakta tersimpan.
+func (s *Store) FactCount() (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM facts`).Scan(&n)
+	return n, err
+}
+
+// ReplaceFacts mengganti seluruh tabel facts dengan daftar baru (hasil konsolidasi).
+func (s *Store) ReplaceFacts(facts []string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM facts`); err != nil {
+		return err
+	}
+	for _, f := range facts {
+		if f = strings.TrimSpace(f); f == "" {
+			continue
+		}
+		if _, err := tx.Exec(`INSERT INTO facts (fact) VALUES (?)`, f); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// MessagesBetween mengambil pesan dalam rentang [start, end), kronologis.
+// created_at SQLite = UTC (CURRENT_TIMESTAMP), jadi bounds dikonversi ke UTC.
+func (s *Store) MessagesBetween(start, end time.Time) ([]Entry, error) {
+	rows, err := s.db.Query(`SELECT role, content, created_at FROM messages
+		WHERE datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?)
+		ORDER BY id ASC`, start.UTC().Format("2006-01-02 15:04:05"), end.UTC().Format("2006-01-02 15:04:05"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Entry
+	for rows.Next() {
+		var e Entry
+		if err := rows.Scan(&e.Role, &e.Content, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// FactsBetween mengambil fakta yang dibuat dalam rentang [start, end).
+// created_at SQLite = UTC (CURRENT_TIMESTAMP), jadi bounds dikonversi ke UTC.
+func (s *Store) FactsBetween(start, end time.Time) ([]string, error) {
+	rows, err := s.db.Query(`SELECT fact FROM facts
+		WHERE datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?)
+		ORDER BY id ASC`, start.UTC().Format("2006-01-02 15:04:05"), end.UTC().Format("2006-01-02 15:04:05"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var f string
+		if err := rows.Scan(&f); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// DailyNote adalah catatan harian.
+type DailyNote struct {
+	Date      string
+	Content   string
+	CreatedAt time.Time
+}
+
+// SaveDailyNote menyimpan/menimpa catatan untuk tanggal (format "2006-01-02").
+func (s *Store) SaveDailyNote(date, content string) error {
+	_, err := s.db.Exec(`INSERT INTO daily_notes (date, content) VALUES (?, ?)
+		ON CONFLICT(date) DO UPDATE SET content = excluded.content`, date, content)
+	return err
+}
+
+// GetDailyNote mengambil catatan tanggal; "", nil bila belum ada.
+func (s *Store) GetDailyNote(date string) (string, error) {
+	var c string
+	err := s.db.QueryRow(`SELECT content FROM daily_notes WHERE date = ?`, date).Scan(&c)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return c, err
+}
+
+// ListDailyNotes mengambil semua catatan harian, urutan tanggal menanjak.
+func (s *Store) ListDailyNotes() ([]DailyNote, error) {
+	rows, err := s.db.Query(`SELECT date, content, created_at FROM daily_notes ORDER BY date ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DailyNote
+	for rows.Next() {
+		var d DailyNote
+		if err := rows.Scan(&d.Date, &d.Content, &d.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
 }

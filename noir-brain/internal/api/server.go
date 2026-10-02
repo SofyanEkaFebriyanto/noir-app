@@ -112,8 +112,11 @@ func (s *Server) Run(addr string) error {
 	r.GET("/ws", s.handleWS)
 	s.registerOpenAI(r)
 	s.registerPersona(r)
+	s.registerMemory(r)
 	// F-14: sapaan proaktif in-app only (background loop).
 	go s.startProactive(context.Background())
+	// F-16: konsolidasi fakta + daily note (background, async dari voice).
+	go s.startMemoryJobs(context.Background())
 	// Web UI — via NoRoute supaya route API/WS tetap menang.
 	webSub, err := fs.Sub(webFS, "web")
 	if err != nil {
