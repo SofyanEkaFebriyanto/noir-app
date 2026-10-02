@@ -1,0 +1,84 @@
+/* Noir web — dark, calm, glowing */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(1200px 800px at 50% 30%, #101018 0%, #050507 70%);
+  color: #cfd2dc;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#conn {
+  position: fixed; top: 14px; right: 16px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #5a5f6e; transition: background .3s, box-shadow .3s;
+}
+#conn.on { background: #43d17c; box-shadow: 0 0 10px #43d17c; }
+main { text-align: center; user-select: none; }
+
+#avatar { position: relative; width: 240px; height: 240px; margin: 0 auto; cursor: pointer; }
+.head {
+  position: absolute; inset: 20px;
+  border-radius: 48% 48% 46% 46% / 56% 56% 44% 44%;
+  background: linear-gradient(160deg, #1b1d26 0%, #0b0c12 70%);
+  border: 1px solid #262a36;
+  box-shadow: 0 0 60px rgba(120,140,255,.08), inset 0 0 40px rgba(0,0,0,.6);
+  animation: breathe 4s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+
+.eye {
+  position: absolute; top: 38%; width: 44px; height: 26px;
+  background: #e8f4ff;
+  border-radius: 50% / 60%;
+  box-shadow: 0 0 18px 4px rgba(160,220,255,.85), 0 0 44px 10px rgba(120,180,255,.35);
+  clip-path: polygon(0 35%, 100% 35%, 100% 75%, 0 75%); /* half-lidded, Noir vibe */
+}
+.eye.left { left: 22%; }
+.eye.right { right: 22%; }
+
+.mouth {
+  position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%);
+  display: flex; gap: 5px; align-items: flex-end; height: 26px; opacity: 0;
+}
+.mouth span { width: 5px; height: 6px; border-radius: 3px; background: #9fd8ff;
+  box-shadow: 0 0 8px rgba(159,216,255,.8); }
+
+.ring {
+  position: absolute; inset: 20px; border-radius: 50%;
+  border: 2px solid rgba(140,180,255,.0); pointer-events: none;
+}
+
+/* ---- states ---- */
+body[data-state="listening"] .ring {
+  border-color: rgba(140,180,255,.55);
+  animation: ripple 1.6s ease-out infinite;
+}
+body[data-state="listening"] .r2 { animation-delay: .8s; }
+@keyframes ripple {
+  0% { transform: scale(.85); opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+body[data-state="listening"] .eye { animation: blink 3s infinite; }
+@keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+
+body[data-state="thinking"] .eye { animation: scan 1.2s ease-in-out infinite; }
+@keyframes scan { 0%,100% { transform: translateX(-6px); } 50% { transform: translateX(6px); } }
+body[data-state="thinking"] .head { animation: breathe 4s ease-in-out infinite, tilt 2.4s ease-in-out infinite; }
+@keyframes tilt { 0%,100% { rotate: -2deg; } 50% { rotate: 2deg; } }
+
+body[data-state="speaking"] .mouth { opacity: 1; }
+body[data-state="speaking"] .mouth span { animation: eq .7s ease-in-out infinite; }
+body[data-state="speaking"] .mouth span:nth-child(2) { animation-delay: .12s; }
+body[data-state="speaking"] .mouth span:nth-child(3) { animation-delay: .24s; }
+body[data-state="speaking"] .mouth span:nth-child(4) { animation-delay: .36s; }
+body[data-state="speaking"] .mouth span:nth-child(5) { animation-delay: .48s; }
+@keyframes eq { 0%,100% { height: 6px; } 50% { height: 24px; } }
+
+#status {
+  margin-top: 28px; font-size: 15px; color: #9aa0b4;
+  min-height: 22px; padding: 0 24px;
+  max-width: 420px; overflow: hidden; text-overflow: ellipsis;
+}
+#hint { margin-top: 8px; font-size: 11px; color: #4a4f61; letter-spacing: .12em; }

@@ -20,6 +20,8 @@ package api
 
 import (
 	"context"
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"strings"
@@ -32,6 +34,11 @@ import (
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/config"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/memory"
 )
+
+// webFS adalah web UI noir (di-embed ke binary, diserve di "/").
+//
+//go:embed web
+var webFS embed.FS
 
 // Deps adalah dependensi server.
 type Deps struct {
@@ -72,6 +79,12 @@ func (s *Server) Run(addr string) error {
 	})
 	r.GET("/ws", s.handleWS)
 	s.registerOpenAI(r)
+	// Web UI — via NoRoute supaya route API/WS tetap menang.
+	webSub, err := fs.Sub(webFS, "web")
+	if err != nil {
+		return err
+	}
+	r.NoRoute(gin.WrapH(http.FileServer(http.FS(webSub))))
 	return r.Run(addr)
 }
 
