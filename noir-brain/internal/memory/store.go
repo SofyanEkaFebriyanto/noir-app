@@ -62,6 +62,16 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("memory: schema settings: %w", err)
 	}
+	// F-14: sapaan proaktif (in-app only).
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS proactive_pings (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		message TEXT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		delivered_at DATETIME
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("memory: schema pings: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -165,4 +175,71 @@ func (s *Store) SetSetting(key, value string) error {
 func (s *Store) DelSetting(key string) error {
 	_, err := s.db.Exec(`DELETE FROM settings WHERE key = ?`, key)
 	return err
+}
+
+// ---------- F-14: proactive pings ----------
+
+// Ping adalah satu sapaan proaktif.
+type Ping struct {
+	ID        int64
+	Message   string
+	CreatedAt time.Time
+}
+
+// SavePing menyimpan sapaan proaktif baru, mengembalikan ID-nya.
+func (s *Store) SavePing(message string) (int64, error) {
+	res, err := s.db.Exec(`INSERT INTO proactive_pings (message) VALUES (?)`, message)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// PendingPings mengambil sapaan yang belum terkirim ke client (maks 5).
+func (s *Store) PendingPings() ([]Ping, error) {
+	rows, err := s.db.Query(`SELECT id, message, created_at FROM proactive_pings
+		WHERE delivered_at IS NULL ORDER BY id ASC LIMIT 5`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Ping
+	for rows.Next() {
+		var p Ping
+		if err := rows.Scan(&p.ID, &p.Message, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// MarkPingsDelivered menandai sapaan sudah terkirim.
+func (s *Store) MarkPingsDelivered(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	q := `UPDATE proactive_pings SET delivered_at = CURRENT_TIMESTAMP WHERE id IN (`
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		if i > 0 {
+			q += ","
+		}
+		q += "?"
+		args[i] = id
+	}
+	q += `)`
+	_, err := s.db.Exec(q, args...)
+	return err
+}
+
+// LastPing mengambil sapaan terakhir (untuk anti-spam/dedupe).
+func (s *Store) LastPing() (Ping, error) {
+	var p Ping
+	err := s.db.QueryRow(`SELECT id, message, created_at FROM proactive_pings
+		ORDER BY id DESC LIMIT 1`).Scan(&p.ID, &p.Message, &p.CreatedAt)
+	if err == sql.ErrNoRows {
+		return Ping{}, nil
+	}
+	return p, err
 }

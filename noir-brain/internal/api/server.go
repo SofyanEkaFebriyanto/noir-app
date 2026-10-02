@@ -68,10 +68,38 @@ var upgrader = websocket.Upgrader{
 // Server adalah HTTP + WS server.
 type Server struct {
 	deps Deps
+
+	mu      sync.Mutex
+	clients map[*clientConn]struct{}
 }
 
 // New membuat Server.
-func New(deps Deps) *Server { return &Server{deps: deps} }
+func New(deps Deps) *Server { return &Server{deps: deps, clients: map[*clientConn]struct{}{}} }
+
+// broadcast mengirim event ke semua client WS yang terhubung.
+func (s *Server) broadcast(ev Event) {
+	s.mu.Lock()
+	conns := make([]*clientConn, 0, len(s.clients))
+	for c := range s.clients {
+		conns = append(conns, c)
+	}
+	s.mu.Unlock()
+	for _, c := range conns {
+		c.send(ev)
+	}
+}
+
+func (s *Server) addClient(c *clientConn) {
+	s.mu.Lock()
+	s.clients[c] = struct{}{}
+	s.mu.Unlock()
+}
+
+func (s *Server) removeClient(c *clientConn) {
+	s.mu.Lock()
+	delete(s.clients, c)
+	s.mu.Unlock()
+}
 
 // Run menjalankan server di addr (mis. ":8080").
 func (s *Server) Run(addr string) error {
@@ -82,6 +110,8 @@ func (s *Server) Run(addr string) error {
 	r.GET("/ws", s.handleWS)
 	s.registerOpenAI(r)
 	s.registerPersona(r)
+	// F-14: sapaan proaktif in-app only (background loop).
+	go s.startProactive(context.Background())
 	// Web UI — via NoRoute supaya route API/WS tetap menang.
 	webSub, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -123,6 +153,8 @@ func (s *Server) handleWS(c *gin.Context) {
 	defer ws.Close()
 
 	conn := &clientConn{ws: ws}
+	s.addClient(conn)
+	defer s.removeClient(conn)
 	log.Printf("ws: client terhubung dari %s", ws.RemoteAddr())
 
 	for {
@@ -133,6 +165,7 @@ func (s *Server) handleWS(c *gin.Context) {
 		switch ev.Type {
 		case "hello":
 			conn.send(Event{Type: "avatar_state", State: "idle"})
+			s.sendPendingPings(conn)
 		case "chat":
 			s.handleChat(conn, strings.TrimSpace(ev.Text))
 		case "tts_done":

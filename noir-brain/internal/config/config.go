@@ -19,6 +19,10 @@ type Config struct {
 	AgentEnabled  bool     // AGENT_ENABLED, default true — agent loop + tools
 	AgentMaxSteps int      // AGENT_MAX_STEPS, default 8
 	AgentServices []string // AGENT_SERVICES, koma-dipisah, default ["noir-brain"]
+
+	ProactiveEnabled  bool   // PROACTIVE_ENABLED, default true — sapaan proaktif (F-14, in-app only)
+	ProactiveInterval int    // PROACTIVE_INTERVAL_MIN, default 45 — jeda antar cek (menit)
+	ProactiveQuiet    string // PROACTIVE_QUIET_HOURS, default "23-6" — jam sepi WIB (format "23-6")
 }
 
 // Load membaca konfigurasi dari environment.
@@ -34,6 +38,10 @@ func Load() Config {
 		AgentEnabled:  envBool("AGENT_ENABLED", true),
 		AgentMaxSteps: envInt("AGENT_MAX_STEPS", 8),
 		AgentServices: envList("AGENT_SERVICES", []string{"noir-brain"}),
+
+		ProactiveEnabled:  envBool("PROACTIVE_ENABLED", true),
+		ProactiveInterval: envInt("PROACTIVE_INTERVAL_MIN", 45),
+		ProactiveQuiet:    env("PROACTIVE_QUIET_HOURS", "23-6"),
 	}
 }
 

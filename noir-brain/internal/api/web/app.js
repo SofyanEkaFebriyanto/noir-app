@@ -68,6 +68,7 @@
         break;
       case 'token': /* streaming — diabaikan di web MVP */ break;
       case 'done': break;
+      case 'proactive_ping': showPing(m.text); break;
       case 'error':
         setState('idle', 'error: ' + (m.error || 'unknown'));
         break;
@@ -99,6 +100,22 @@
     u.onerror = speakNext;
     speechSynthesis.speak(u);
   }
+
+  /* ---------- F-14: sapaan proaktif (in-app only) ---------- */
+  const pingToast = document.getElementById('ping-toast');
+  const pingText = pingToast ? pingToast.querySelector('.ping-text') : null;
+  let pingTimer = null;
+  function showPing(text) {
+    if (!pingToast || !text) return;
+    pingText.textContent = text;
+    pingToast.hidden = false;
+    clearTimeout(pingTimer);
+    pingTimer = setTimeout(hidePing, 30000);
+    // kalau lagi idle → Noir langsung menyapa via suara; kalau sibuk, cukup toast
+    if (state === 'idle' && !speaking) speakText(text);
+  }
+  function hidePing() { if (pingToast) pingToast.hidden = true; clearTimeout(pingTimer); }
+  if (pingToast) pingToast.addEventListener('click', () => { const t = pingText.textContent; hidePing(); if (t) speakText(t); });
 
   /* ---------- STT (Web Speech API) ---------- */
   function startListening() {

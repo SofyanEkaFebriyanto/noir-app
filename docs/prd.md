@@ -75,7 +75,7 @@ v1 single-user. Multi-user / login / akun = out of scope.
 **v2.0 — Memori & kepribadian** ◐ BERJALAN
 - F-12: Memori jangka panjang ✅ SELESAI (2026-10-02) — tiap percakapan selesai, LLM ekstrak fakta tahan lama (preferensi, proyek, rencana) → tersimpan di SQLite → disuntik ke system prompt sesi berikut. Dedupe otomatis, maks 200 fakta.
 - F-13: Halaman "Tentang Noir" ✅ SELESAI (2026-10-02) — GET/PUT/DELETE `/v1/persona` + halaman `persona.html`: lihat & edit persona, override tersimpan di STB, reset ke default kapan saja.
-- F-14: Proactive ping ☐ — butuh persetujuan pola notifikasi dari Sofyan.
+- F-14: Proactive ping ✅ SELESAI (2026-10-02, scope: in-app only) — server cek berkala (PROACTIVE_INTERVAL_MIN, default 45 mnt); LLM menilai dari fakta + riwayat + waktu apakah ada hal layak disampaikan; bila ya, sapaan di-broadcast via WebSocket ke web app yang sedang terbuka (toast + otomatis disuarakan bila idle). Jam sepi WIB via PROACTIVE_QUIET_HOURS (default "23-6"). Sapaan yang belum terkirim tersimpan di SQLite dan dikirim saat client connect. Tidak ada browser notification / push.
 
 **Agent (di luar PRD awal, atas permintaan Sofyan 2026-10-02)** ✅ v1 SELESAI
 - Loop LLM + tool calling di STB: `waktu`, `sysinfo`, `exec`, `read_file`, `write_file`, `list_dir`, `service_status`, `service_restart`.
