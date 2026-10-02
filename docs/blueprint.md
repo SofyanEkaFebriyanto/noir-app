@@ -1,19 +1,22 @@
 # Blueprint — Aplikasi Interaktif Noir
 
-**Status:** Draf perencanaan · **Tanggal:** 2026-10-01
+**Status:** Eksekusi berjalan · **Tanggal:** 2026-10-01 · **Update:** 2026-10-02
 **Pemilik ide:** Sofyan · **Arsitek:** Noir
 
 ---
 
 ## 1. Visi
 
-Satu karakter AI — **Noir** — yang hidup di tiga wujud:
+Satu karakter AI — **Noir** — yang hidup di banyak wujud:
 
-1. **Aplikasi mobile** (sekarang): avatar + animasi + chat teks/suara, interaktif penuh.
-2. **Otak terpusat** (server): persona, memori, dan logika Noir yang konsisten di semua wujud.
-3. **Robot fisik** (nanti, kalau ada modal): Arduino/ESP32 — Noir bisa disentuh.
+1. **Web app** (aktif, 2026-10-02): voice UI di browser, diserve langsung dari backend.
+2. **Aplikasi mobile** (pause): Flutter Android — dilanjut kalau Sofyan memutuskan lagi.
+3. **Otak terpusat** (server): persona, memori, dan logika Noir yang konsisten di semua wujud. **Sekarang juga agent**: bisa eksekusi tool di STB (ala Hermes).
+4. **Robot fisik** (nanti, kalau ada modal): Arduino/ESP32 — Noir bisa disentuh.
 
 Prinsip: **satu otak, banyak badan.** Apa pun wujudnya — HP, web, robot — yang ngomong tetap Noir yang sama, dengan ingatan yang sama.
+
+> **Pivot 2026-10-02:** atas keputusan Sofyan, pengembangan APK di-pause; fokus ke web app dulu. Blueprint ini diupdate mengikuti realita.
 
 ---
 
@@ -33,17 +36,29 @@ Prinsip: **satu otak, banyak badan.** Apa pun wujudnya — HP, web, robot — ya
 ## 3. Fase-fase
 
 ```
-Fase 0  Perencanaan          ← KITA DI SINI
-         blueprint.md · prd.md · design.md → disetujui Sofyan → gate eksekusi
-Fase 1  MVP voice-only ala JARVIS (v1.0)
-         Wake word "Hey Noir" (tap avatar sebagai fallback) + STT on-device +
-         TTS per kalimat. Half-duplex (mic mati saat Noir bicara). Tanpa teks di UI.
-Fase 2  Full duplex (v1.1)
-         Barge-in (motong omongan Noir), continuous conversation 30 dtk,
-         perintah cepat lokal tanpa LLM.
-Fase 3  Memori & kepribadian (v2.0)
-         Memori jangka panjang (SQLite), Noir ingat percakapan lama, persona berkembang.
-Fase 4  Robot fisik (butuh modal)
+Fase 0  Perencanaan                      ✓ SELESAI
+         blueprint.md · prd.md · design.md disetujui → gate eksekusi
+Fase 1  MVP voice-only ala JARVIS (v1.0) ✓ SELESAI
+         Wake word (tap avatar fallback) + STT on-device + TTS per kalimat.
+         Half-duplex. Tanpa teks di UI.
+Fase 2  Full duplex (v1.1)              ✓ SELESAI
+         Barge-in (tap saat Noir bicara), continuous conversation 30 dtk,
+         perintah cepat lokal tanpa LLM ("diam"/"stop"/"ulangi").
+Fase 2.5 Pivot web (2026-10-02)         ✓ SELESAI
+         Web voice UI (noir-brain/internal/api/web/, go:embed, diserve di /),
+         Web Speech API (STT) + speechSynthesis (TTS), avatar CSS 4 state.
+         Endpoint OpenAI-compatible (POST /v1/chat/completions streaming SSE,
+         GET /v1/models). APK di-pause.
+Fase 2.6 Agent upgrade (2026-10-02)     ✓ SELESAI (v1)
+         LLM + tool calling loop di STB: waktu, sysinfo, exec, read/write file,
+         list_dir, service_status, service_restart. Safety denylist + operation log.
+Fase 3  Memori & kepribadian (v2.0)     ◐ BERJALAN
+         ✓ Memori jangka panjang (SQLite) — F-12: ekstraksi fakta otomatis
+           tiap percakapan, disuntik ke system prompt sesi berikut.
+         ✓ Halaman "Tentang Noir" (F-13): GET/PUT/DELETE /v1/persona +
+           persona.html — lihat & edit persona, tersimpan di STB.
+         ☐ F-14 proactive ping — butuh persetujuan pola notifikasi dari Sofyan.
+Fase 4  Robot fisik (butuh modal)       ☐ BELUM
          ESP32 + LCD (pakai varian pixel-art!) + servo + speaker. MQTT ke backend.
 ```
 
@@ -60,7 +75,7 @@ Fase 4  Robot fisik (butuh modal)
 | Realtime | **WebSocket** | Chat streaming per-token + event status avatar dalam satu koneksi | SSE + polling (lebih ribet), gRPC (overkill) |
 | Database | **SQLite** | Nol setup, cukup untuk satu pengguna, sama seperti stack PKL | Postgres (overkill untuk v1) |
 | STT | **on-device** (`speech_to_text`, streaming) | Gratis, offline, privasi terjaga (audio tidak ke server) | Cloud STT (bayar + butuh internet) |
-| Wake word | **Porcupine** (Picovoice) | SDK Flutter resmi, 100% on-device, gratis untuk personal; "Hey Noir" dilatih via Picovoice Console | openWakeWord (open-source penuh, tapi butuh porting ke mobile) |
+| Wake word | **openWakeWord** ("hey jarvis", pre-trained) | 100% on-device, gratis, open-source; ganti Porcupine setelah free tier Picovoice ditutup 30 Jun 2026 | Porcupine (Picovoice) — free tier mati total |
 | TTS (v1) | **on-device** (`flutter_tts`) | Gratis, offline. Catatan: suara "sampel 1" yang dipilih Sofyan itu dari environment gw, bukan dari HP — jadi di aplikasi perlu pilih voice sendiri | Cloud TTS (bayar; opsi upgrade nanti) |
 | Akses remote | **Tailscale** (utama), Cloudflare Tunnel dari STB (cadangan) | Tailscale paling gampang untuk pribadi; tunnel Cloudflare sudah terbukti jalan dari infrastruktur Sofyan | Port forwarding (ribet + berisiko) |
 

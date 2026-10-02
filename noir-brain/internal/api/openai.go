@@ -56,19 +56,13 @@ func (s *Server) registerOpenAI(r *gin.Engine) {
 	})
 }
 
-// systemPrompt mengembalikan prompt persona (override config didahulukan).
-func (s *Server) systemPrompt() string {
-	if s.deps.Config.SystemPrompt != "" {
-		return s.deps.Config.SystemPrompt
-	}
-	return s.deps.SystemPrompt
-}
+// systemPrompt dipindah ke server.go (versi lengkap: persona override + fakta).
 
 // toBrainMessages mengubah pesan OpenAI jadi pesan internal,
 // dengan system prompt persona di depan.
 func (s *Server) toBrainMessages(in []chatMessage) []brain.Message {
 	messages := make([]brain.Message, 0, len(in)+1)
-	messages = append(messages, brain.Message{Role: "system", Content: s.systemPrompt()})
+	messages = append(messages, brain.Message{Role: "system", Content: s.baseSystemPrompt()})
 	for _, m := range in {
 		role := strings.ToLower(strings.TrimSpace(m.Role))
 		if role != "system" && role != "user" && role != "assistant" {

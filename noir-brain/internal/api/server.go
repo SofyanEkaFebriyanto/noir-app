@@ -81,6 +81,7 @@ func (s *Server) Run(addr string) error {
 	})
 	r.GET("/ws", s.handleWS)
 	s.registerOpenAI(r)
+	s.registerPersona(r)
 	// Web UI — via NoRoute supaya route API/WS tetap menang.
 	webSub, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -172,11 +173,7 @@ func (s *Server) handleChat(conn *clientConn, text string) {
 	}
 
 	messages := make([]brain.Message, 0, len(hist)+2)
-	system := s.deps.SystemPrompt
-	if s.deps.Config.SystemPrompt != "" {
-		system = s.deps.Config.SystemPrompt
-	}
-	messages = append(messages, brain.Message{Role: "system", Content: system})
+	messages = append(messages, brain.Message{Role: "system", Content: s.systemPrompt()})
 	for _, h := range hist {
 		messages = append(messages, brain.Message{Role: h.Role, Content: h.Content})
 	}
@@ -198,9 +195,45 @@ func (s *Server) handleChat(conn *clientConn, text string) {
 		log.Printf("memory append assistant: %v", err)
 	}
 
+	// F-12: ekstraksi fakta jangka panjang, async (tidak memblokir suara).
+	if ap, ok := s.deps.Provider.(brain.AgentProvider); ok {
+		conv := append(append([]memory.Entry{}, hist...),
+			memory.Entry{Role: "user", Content: text},
+			memory.Entry{Role: "assistant", Content: answer})
+		go func() {
+			for _, f := range memory.ExtractFacts(context.Background(), ap, conv) {
+				if err := s.deps.Store.SaveFact(f); err != nil {
+					log.Printf("memory save fact: %v", err)
+				}
+			}
+		}()
+	}
+
 	conn.send(Event{Type: "done"})
 	// App yang membacakan via TTS per kalimat, lalu kirim tts_done.
 	conn.send(Event{Type: "avatar_state", State: "speaking", Text: answer})
+}
+
+// baseSystemPrompt: persona override (F-13) > env SYSTEM_PROMPT > default.
+// Dipakai endpoint /v1 (stateless terhadap memory).
+func (s *Server) baseSystemPrompt() string {
+	if v, err := s.deps.Store.GetSetting("persona_override"); err == nil && strings.TrimSpace(v) != "" {
+		return v
+	}
+	if s.deps.Config.SystemPrompt != "" {
+		return s.deps.Config.SystemPrompt
+	}
+	return s.deps.SystemPrompt
+}
+
+// systemPrompt menyusun system prompt efektif untuk voice WS:
+// base + blok fakta jangka panjang (F-12).
+func (s *Server) systemPrompt() string {
+	system := s.baseSystemPrompt()
+	if facts, err := s.deps.Store.Facts(30); err == nil {
+		system += memory.FactsBlock(facts)
+	}
+	return system
 }
 
 // handleAgentChat menjalankan agent loop (LLM + tools). Mengembalikan jawaban

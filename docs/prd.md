@@ -1,8 +1,10 @@
 # PRD — Aplikasi Interaktif Noir
 
-**Status:** Draf · **Tanggal:** 2026-10-01 · **Versi target:** v1.0 (MVP voice-only ala JARVIS)
+**Status:** Eksekusi berjalan · **Tanggal:** 2026-10-01 · **Update:** 2026-10-02 · **Versi target:** v1.0 (MVP voice-only ala JARVIS)
 
 > **Pivot 2026-10-01:** atas permintaan Sofyan, aplikasi menjadi **full voice-to-voice tanpa teks sama sekali di UI** — seperti JARVIS di Iron Man. Chat teks dihapus dari scope; STT yang tadinya fase 2 naik ke v1.0.
+>
+> **Pivot 2026-10-02:** atas keputusan Sofyan, fokus pindah ke **web app** dulu; APK di-pause. Backend naik kelas jadi **agent** (LLM + tool calling di STB).
 
 ---
 
@@ -39,7 +41,7 @@ v1 single-user. Multi-user / login / akun = out of scope.
 |---|---|---|---|
 | F-01 | Layar utama avatar | Avatar Noir full-body + animasi loop sesuai status. **Nol teks di UI**: tidak ada bubble chat, tidak ada input teks, tidak ada riwayat visual | Must |
 | F-02 | Status avatar + indikator suara | State machine: `idle` → `listening` → `thinking` → `speaking` → `idle`; tiap status ada animasinya + cincin waveform saat listening/speaking | Must |
-| F-03 | Wake word | "Hey Noir" via Porcupine (on-device). Fallback: tap avatar untuk mulai bicara | Must |
+| F-03 | Wake word | "hey jarvis" via openWakeWord (on-device). Fallback: tap/klik avatar untuk mulai bicara. (Porcupine/Picovoice mati: free tier ditutup 30 Jun 2026) | Must |
 | F-04 | Voice input (STT) | STT on-device streaming; endpointing otomatis (dianggap selesai saat pengguna diam ~0,8 dtk) → transkrip dikirim ke server | Must |
 | F-05 | Respons suara (TTS) | Jawaban dibacakan **per kalimat** (streaming, tidak nunggu teks lengkap); status `speaking` sinkron dengan audio | Must |
 | F-06 | Indikator koneksi | Visual tanpa teks: titik hijau = terhubung, merah = offline; tap untuk retry | Must |
@@ -70,10 +72,15 @@ v1 single-user. Multi-user / login / akun = out of scope.
   "ulangi" baca ulang jawaban terakhir.
 - F-08 diperketat: diam 12 dtk saat listening → kembali idle.
 
-**v2.0 — Memori & kepribadian**
-- F-12: Memori jangka panjang — Noir ingat fakta & preferensi antar sesi.
-- F-13: Halaman "Tentang Noir" — lihat/edit persona (yang dikurasi bareng).
-- F-14: Proactive ping — Noir nyapa duluan kalau ada hal relevan (butuh persetujuan pola notifikasi).
+**v2.0 — Memori & kepribadian** ◐ BERJALAN
+- F-12: Memori jangka panjang ✅ SELESAI (2026-10-02) — tiap percakapan selesai, LLM ekstrak fakta tahan lama (preferensi, proyek, rencana) → tersimpan di SQLite → disuntik ke system prompt sesi berikut. Dedupe otomatis, maks 200 fakta.
+- F-13: Halaman "Tentang Noir" ✅ SELESAI (2026-10-02) — GET/PUT/DELETE `/v1/persona` + halaman `persona.html`: lihat & edit persona, override tersimpan di STB, reset ke default kapan saja.
+- F-14: Proactive ping ☐ — butuh persetujuan pola notifikasi dari Sofyan.
+
+**Agent (di luar PRD awal, atas permintaan Sofyan 2026-10-02)** ✅ v1 SELESAI
+- Loop LLM + tool calling di STB: `waktu`, `sysinfo`, `exec`, `read_file`, `write_file`, `list_dir`, `service_status`, `service_restart`.
+- Safety: denylist destruktif, blokir file kredensial, write dilarang di direktori sistem, service allowlist, operation log.
+- Konektor eksternal (Gmail/Kalender/dsb.) = level berikutnya, belum dikerjakan.
 
 **Fase robot (butuh modal)**
 - F-15: ESP32 + LCD menampilkan Noir pixel-art + status yang sama dengan app.

@@ -82,3 +82,5 @@ body[data-state="speaking"] .mouth span:nth-child(5) { animation-delay: .48s; }
   max-width: 420px; overflow: hidden; text-overflow: ellipsis;
 }
 #hint { margin-top: 8px; font-size: 11px; color: #4a4f61; letter-spacing: .12em; }
+#hint a { color: #5a6080; text-decoration: none; }
+#hint a:hover { color: #888; text-decoration: underline; }

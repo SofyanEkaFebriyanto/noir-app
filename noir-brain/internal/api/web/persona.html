@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tentang Noir</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a12; color: #e8e8f0; font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+  h1 { font-size: 20px; margin-bottom: 6px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 16px; text-align: center; max-width: 560px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 10px; margin-bottom: 12px; }
+  .badge.custom { background: #4a2c00; color: #ffb84d; }
+  .badge.default { background: #1c2a1c; color: #7dd87d; }
+  textarea { width: 100%; max-width: 640px; min-height: 320px; background: #14141f; color: #e8e8f0; border: 1px solid #333; border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.6; font-family: ui-monospace, monospace; resize: vertical; }
+  .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  button { padding: 10px 22px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .save { background: #4a7dd8; color: #fff; }
+  .reset { background: #333; color: #ccc; }
+  .back { background: transparent; color: #888; text-decoration: underline; }
+  #msg { margin-top: 12px; font-size: 13px; min-height: 20px; }
+  .ok { color: #7dd87d; } .err { color: #ff8080; }
+  details { max-width: 640px; width: 100%; margin-top: 18px; font-size: 13px; color: #aaa; }
+  summary { cursor: pointer; color: #888; }
+  pre { background: #14141f; padding: 12px; border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 12px; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <h1>🖤 Tentang Noir</h1>
+  <p class="sub">Persona ini yang membentuk cara Noir bicara. Ubah kalau mau — tersimpan di STB, berlaku untuk semua sesi berikutnya.</p>
+  <span id="badge" class="badge default">default</span>
+  <textarea id="prompt" placeholder="Memuat..."></textarea>
+  <div class="row">
+    <button class="save" id="save">Simpan</button>
+    <button class="reset" id="reset">Kembalikan default</button>
+    <button class="back" onclick="location.href='/'">← kembali</button>
+  </div>
+  <div id="msg"></div>
+  <details>
+    <summary>Lihat persona default (bawaan kode)</summary>
+    <pre id="def"></pre>
+  </details>
+<script>
+const ta = document.getElementById('prompt'), msg = document.getElementById('msg'),
+      badge = document.getElementById('badge');
+function say(t, cls) { msg.textContent = t; msg.className = cls || ''; }
+async function load() {
+  try {
+    const r = await fetch('/v1/persona');
+    const d = await r.json();
+    ta.value = d.prompt || '';
+    document.getElementById('def').textContent = d.default || '';
+    badge.textContent = d.overridden ? 'custom (punya lo)' : 'default';
+    badge.className = 'badge ' + (d.overridden ? 'custom' : 'default');
+  } catch (e) { say('Gagal memuat persona: ' + e.message, 'err'); }
+}
+document.getElementById('save').onclick = async () => {
+  say('Menyimpan...');
+  try {
+    const r = await fetch('/v1/persona', { method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt: ta.value }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    say('Tersimpan. Noir sekarang pakai persona ini.', 'ok'); load();
+  } catch (e) { say('Gagal: ' + e.message, 'err'); }
+};
+document.getElementById('reset').onclick = async () => {
+  if (!confirm('Kembalikan ke persona default?')) return;
+  try {
+    await fetch('/v1/persona', { method: 'DELETE' });
+    say('Direset ke default.', 'ok'); load();
+  } catch (e) { say('Gagal: ' + e.message, 'err'); }
+};
+load();
+</script>
+</body>
+</html>
