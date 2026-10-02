@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/agent"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/api"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/brain"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/config"
@@ -32,11 +33,21 @@ func main() {
 		Model:   cfg.LLMModel,
 	})
 
+	// Agent loop: LLM + tools lokal di STB (bisa dimatikan via AGENT_ENABLED=0).
+	var ag *agent.Agent
+	if cfg.AgentEnabled {
+		tools := agent.DefaultTools(cfg.AgentServices)
+		ag = agent.New(provider, tools, cfg.AgentMaxSteps, cfg.DataDir+"/agent.log")
+		defer ag.Close()
+		log.Printf("agent aktif: %d tools, max_steps=%d, services=%v", len(tools), cfg.AgentMaxSteps, cfg.AgentServices)
+	}
+
 	srv := api.New(api.Deps{
 		Config:       cfg,
 		Provider:     provider,
 		Store:        store,
 		SystemPrompt: persona.SystemPrompt(),
+		Agent:        ag,
 	})
 
 	log.Printf("noir-brain listening on :%s (model=%s)", cfg.Port, cfg.LLMModel)

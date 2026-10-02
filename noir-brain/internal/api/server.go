@@ -30,6 +30,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
+	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/agent"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/brain"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/config"
 	"github.com/SofyanEkaFebriyanto/noir-app/noir-brain/internal/memory"
@@ -46,6 +47,7 @@ type Deps struct {
 	Provider     brain.Provider
 	Store        *memory.Store
 	SystemPrompt string
+	Agent        *agent.Agent // nil = mode chat biasa (tanpa tools)
 }
 
 // Event adalah satu pesan WebSocket.
@@ -181,31 +183,14 @@ func (s *Server) handleChat(conn *clientConn, text string) {
 
 	conn.send(Event{Type: "avatar_state", State: "thinking"})
 
-	tokens, errc := s.deps.Provider.StreamChat(ctx, messages)
-
-	var full strings.Builder
-streamLoop:
-	for {
-		select {
-		case <-ctx.Done():
-			return // dibatalkan: user mulai bicara lagi / disconnect
-		case tok, ok := <-tokens:
-			if !ok {
-				break streamLoop
-			}
-			full.WriteString(tok)
-			conn.send(Event{Type: "token", Text: tok})
-		case err := <-errc:
-			if err != nil {
-				log.Printf("llm stream: %v", err)
-				// Fallback suara: app akan membacakan ini via TTS.
-				conn.send(Event{Type: "avatar_state", State: "speaking", Text: "Maaf, otaknya lagi error. Coba ulangi?"})
-				return
-			}
-		}
+	var answer string
+	if s.deps.Agent != nil {
+		answer = s.handleAgentChat(ctx, conn, messages)
+	} else {
+		answer = s.handleStreamChat(ctx, conn, messages)
 	}
 
-	answer := strings.TrimSpace(full.String())
+	answer = strings.TrimSpace(answer)
 	if answer == "" {
 		answer = "Hmm, kosong. Coba ngomong lagi?"
 	}
@@ -216,6 +201,72 @@ streamLoop:
 	conn.send(Event{Type: "done"})
 	// App yang membacakan via TTS per kalimat, lalu kirim tts_done.
 	conn.send(Event{Type: "avatar_state", State: "speaking", Text: answer})
+}
+
+// handleAgentChat menjalankan agent loop (LLM + tools). Mengembalikan jawaban
+// final, atau "" bila dibatalkan. Progress tool dikirim sebagai status thinking.
+func (s *Server) handleAgentChat(ctx context.Context, conn *clientConn, messages []brain.Message) string {
+	answer, err := s.deps.Agent.Run(ctx, messages, func(step int, toolName string) {
+		conn.send(Event{Type: "avatar_state", State: "thinking", Text: toolProgressText(toolName)})
+	})
+	if err != nil {
+		if ctx.Err() != nil {
+			return "" // dibatalkan: user mulai bicara lagi / disconnect
+		}
+		log.Printf("agent: %v", err)
+		return "Maaf, otaknya lagi error. Coba ulangi?"
+	}
+	return answer
+}
+
+func toolProgressText(name string) string {
+	switch name {
+	case "exec":
+		return "jalanin perintah…"
+	case "read_file", "list_dir":
+		return "baca file…"
+	case "write_file":
+		return "nulis file…"
+	case "service_status":
+		return "cek service…"
+	case "service_restart":
+		return "restart service…"
+	case "sysinfo":
+		return "cek sistem…"
+	case "waktu":
+		return "cek jam…"
+	default:
+		return "kerja…"
+	}
+}
+
+// handleStreamChat adalah jalur chat biasa (streaming token, tanpa tools).
+// Mengembalikan jawaban final, atau "" bila dibatalkan.
+func (s *Server) handleStreamChat(ctx context.Context, conn *clientConn, messages []brain.Message) string {
+	tokens, errc := s.deps.Provider.StreamChat(ctx, messages)
+
+	var full strings.Builder
+streamLoop:
+	for {
+		select {
+		case <-ctx.Done():
+			return "" // dibatalkan: user mulai bicara lagi / disconnect
+		case tok, ok := <-tokens:
+			if !ok {
+				break streamLoop
+			}
+			full.WriteString(tok)
+			conn.send(Event{Type: "token", Text: tok})
+		case err := <-errc:
+			if err != nil {
+				log.Printf("llm stream: %v", err)
+				// Fallback suara: app akan membacakan ini via TTS.
+				return "Maaf, otaknya lagi error. Coba ulangi?"
+			}
+		}
+	}
+
+	return full.String()
 }
 
 // handleHistory mengembalikan riwayat percakapan.

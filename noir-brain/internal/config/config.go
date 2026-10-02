@@ -1,7 +1,11 @@
 // Package config memuat konfigurasi noir-brain dari environment variables.
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+	"strings"
+)
 
 // Config adalah seluruh konfigurasi server.
 type Config struct {
@@ -11,6 +15,10 @@ type Config struct {
 	LLMModel     string // nama model, default gpt-4o-mini
 	DataDir      string // direktori SQLite, default ./data
 	SystemPrompt string // override system prompt (opsional)
+
+	AgentEnabled  bool     // AGENT_ENABLED, default true — agent loop + tools
+	AgentMaxSteps int      // AGENT_MAX_STEPS, default 8
+	AgentServices []string // AGENT_SERVICES, koma-dipisah, default ["noir-brain"]
 }
 
 // Load membaca konfigurasi dari environment.
@@ -22,6 +30,10 @@ func Load() Config {
 		LLMModel:     env("LLM_MODEL", "gpt-4o-mini"),
 		DataDir:      env("DATA_DIR", "./data"),
 		SystemPrompt: os.Getenv("SYSTEM_PROMPT"),
+
+		AgentEnabled:  envBool("AGENT_ENABLED", true),
+		AgentMaxSteps: envInt("AGENT_MAX_STEPS", 8),
+		AgentServices: envList("AGENT_SERVICES", []string{"noir-brain"}),
 	}
 }
 
@@ -30,4 +42,41 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func envBool(key string, def bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if v == "" {
+		return def
+	}
+	return v == "1" || v == "true" || v == "yes"
+}
+
+func envInt(key string, def int) int {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return def
+	}
+	return n
+}
+
+func envList(key string, def []string) []string {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return def
+	}
+	var out []string
+	for _, s := range strings.Split(v, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return def
+	}
+	return out
 }
